@@ -110,7 +110,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
     }
 
     vprintln!(args.verbose, "Reading file data...");
-    let mut file_data = vec![0u8; file_size as usize];
+    let mut file_data = vec![0u8; (file_size - args.offset) as usize];
     file.read_exact(&mut file_data).context("Failed to read file data")?;
 
     let picture = gim::load_gim_image(&file_data).context("Failed to load image")?;
@@ -125,7 +125,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
     }
 
     if format == gim::ImageFormat::RGBA8888 {
-        let output_file_name = format!("{}.png", input_name);
+        let output_file_name = format!("{}_{}.png", input_name, args.offset);
         vprintln!(args.verbose, "Writing output file: {}", output_file_name);
         let mut ow = std::io::BufWriter::new(std::fs::File::create(&output_file_name).context("Failed to create output file")?);
 
@@ -194,7 +194,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
         {
             let pal_data = convert_palette_for_png(&palette, raw_pal_data)?;
 
-            let output_file_name = format!("{}.png", input_name);
+            let output_file_name = format!("{}_{}.png", input_name, args.offset);
             println!("Writing output file: {}", output_file_name);
             let mut ow = std::io::BufWriter::new(std::fs::File::create(&output_file_name).context("Failed to create output file")?);
 
