@@ -5,7 +5,7 @@ use std::io::{Read, Seek};
 struct Args {
     filenames: Vec<String>,
     skipcheck: bool,
-    output_dir: String,
+    output_dir: Option<String>,
 }
 
 fn parse_args() -> Result<Args, lexopt::Error> {
@@ -40,7 +40,7 @@ fn parse_args() -> Result<Args, lexopt::Error> {
     return Ok(Args {
         filenames,
         skipcheck,
-        output_dir :output_dir.unwrap_or_default(),
+        output_dir,
     });
 }
 
@@ -88,11 +88,17 @@ fn main() {
             num_files -= 1;
         }
 
-        // make a directory for the extracted files with the name of the input file without extension
         let input_name = std::path::Path::new(input_file).file_stem().expect("Failed to get file stem");
-        let mut output_dir = std::path::PathBuf::from(&args.output_dir);
-        output_dir.push(&input_name);
-        std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+        let mut output_dir = std::path::PathBuf::new();
+        if let Some(ref dir) = args.output_dir {
+            output_dir = std::path::PathBuf::from(dir);
+            std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+        }
+        if num_files > 1 {
+            // make a directory for the extracted files with the name of the input file without extension
+            output_dir.push(&input_name);
+            std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+        }
 
         for i in 0..num_files {
             let (entry_offset, entry_length) = calc_offset_to_entry(i as usize, &lengths);
@@ -109,7 +115,11 @@ fn main() {
             let suffix = detect_file_suffix(&file_data);
             let mut output_path = std::path::PathBuf::from(&output_dir); // use specified output directory
             output_path.push(input_name); //add input file stem as base name
-            output_path.add_extension(format!("{}.{}", i, suffix)); //add index and suffix as extension
+            if num_files > 1 {
+                output_path.add_extension(format!("{}.{}", i, suffix)); //add index and suffix as extension
+            } else {
+                output_path.add_extension(suffix); //add suffix as extension
+            }
             std::fs::write(&output_path, &file_data).expect("Failed to write output file");
             println!("Extracted file {}: {} bytes", output_path.display(), entry_length);
         }
@@ -118,11 +128,11 @@ fn main() {
 
 fn detect_file_suffix(file_data: &[u8]) -> &'static str {
     match file_data.get(0..4) {
-        Some(b"MIG.") => "gim", //PSP Image
-        Some(b"MThd") => "mid", //MIDI Audio
-        Some(b"PPHD") => "phd", //PSP Audio
+        Some(b"MIG.") => "gim",  //PSP Image
+        Some(b"MThd") => "mid",  //MIDI Audio
+        Some(b"PPHD") => "phd",  //PSP Audio
         Some(b"PSMF") => "psmf", //PSP Movie
-        Some(b"VAGp") => "vag", //Playstation Audio
+        Some(b"VAGp") => "vag",  //Playstation Audio
         _ => "bin",
     }
 }
