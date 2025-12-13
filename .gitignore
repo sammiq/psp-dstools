@@ -26,6 +26,7 @@ perf.hist*
 *.png
 *.gim
 *.txt
+*.vag
 
 *.ANI
 *.AXF

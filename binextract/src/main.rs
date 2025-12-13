@@ -5,16 +5,21 @@ use std::io::{Read, Seek};
 struct Args {
     filenames: Vec<String>,
     skipcheck: bool,
+    output_dir: String,
 }
 
 fn parse_args() -> Result<Args, lexopt::Error> {
     let mut filenames = Vec::new();
     let mut skipcheck = false;
+    let mut output_dir = None;
     let mut parser = Parser::from_env();
     while let Some(arg) = parser.next()? {
         match arg {
             Arg::Short('s') | Arg::Long("skipcheck") => {
                 skipcheck = true;
+            }
+            Arg::Short('o') | Arg::Long("output") => {
+                output_dir = Some(parser.value()?.string()?);
             }
             Arg::Value(val) => {
                 filenames.push(val.string()?);
@@ -35,6 +40,7 @@ fn parse_args() -> Result<Args, lexopt::Error> {
     return Ok(Args {
         filenames,
         skipcheck,
+        output_dir :output_dir.unwrap_or_default(),
     });
 }
 
@@ -82,6 +88,12 @@ fn main() {
             num_files -= 1;
         }
 
+        // make a directory for the extracted files with the name of the input file without extension
+        let input_name = std::path::Path::new(input_file).file_stem().expect("Failed to get file stem");
+        let mut output_dir = std::path::PathBuf::from(&args.output_dir);
+        output_dir.push(&input_name);
+        std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+
         for i in 0..num_files {
             let (entry_offset, entry_length) = calc_offset_to_entry(i as usize, &lengths);
             println!("Processing file {} - offset: 0x{:X} size: 0x{:X}", i, entry_offset, entry_length);
@@ -94,11 +106,12 @@ fn main() {
 
             println!("Finished reading file data at: 0x{:X}", file.stream_position().expect("Failed to read position"));
 
-            let input_name = std::path::Path::new(input_file).file_stem().unwrap().to_string_lossy();
             let suffix = detect_file_suffix(&file_data);
-            let output_file_name = format!("{}_{}.{}", input_name, i, suffix);
-            std::fs::write(&output_file_name, &file_data).expect("Failed to write output file");
-            println!("Extracted file {}: {} bytes", output_file_name, entry_length);
+            let mut output_path = std::path::PathBuf::from(&output_dir); // use specified output directory
+            output_path.push(input_name); //add input file stem as base name
+            output_path.add_extension(format!("{}.{}", i, suffix)); //add index and suffix as extension
+            std::fs::write(&output_path, &file_data).expect("Failed to write output file");
+            println!("Extracted file {}: {} bytes", output_path.display(), entry_length);
         }
     }
 }
