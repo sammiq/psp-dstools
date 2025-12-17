@@ -219,7 +219,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
                                 bail!("Error: source index {} out of bounds (data length {})", src + 3, picture.image_data.len());
                             }
 
-                            out[dst] = picture.image_data[src];
+                            out[dst + 0] = picture.image_data[src + 0];
                             out[dst + 1] = picture.image_data[src + 1];
                             out[dst + 2] = picture.image_data[src + 2];
                             out[dst + 3] = picture.image_data[src + 3];
@@ -240,7 +240,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
                         bail!("Error: source index {} out of bounds (data length {})", src + 3, picture.image_data.len());
                     }
 
-                    out[dst] = picture.image_data[src];
+                    out[dst + 0] = picture.image_data[src + 0];
                     out[dst + 1] = picture.image_data[src + 1];
                     out[dst + 2] = picture.image_data[src + 2];
                     out[dst + 3] = picture.image_data[src + 3];
@@ -293,7 +293,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
 
                                 let pal_offset = (picture.image_data[src] as usize) * 4;
 
-                                out[dst] = pal_data[pal_offset + 0];
+                                out[dst + 0] = pal_data[pal_offset + 0];
                                 out[dst + 1] = pal_data[pal_offset + 1];
                                 out[dst + 2] = pal_data[pal_offset + 2];
                                 out[dst + 3] = pal_data[pal_offset + 3];
@@ -315,7 +315,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
 
                         let pal_offset = (picture.image_data[src] as usize) * 4;
 
-                        out[dst] = pal_data[pal_offset + 0];
+                        out[dst + 0] = pal_data[pal_offset + 0];
                         out[dst + 1] = pal_data[pal_offset + 1];
                         out[dst + 2] = pal_data[pal_offset + 2];
                         out[dst + 3] = pal_data[pal_offset + 3];
@@ -356,7 +356,7 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
                         let tile_offset = tile_index * tw * th;
 
                         for y in 0..th {
-                            for x in 0..tw {
+                            for x in (0..tw).step_by(2) {
                                 let pixel_index = tile_offset + y * tw + x;
 
                                 // For 4-bit: divide by 2 to get byte position
@@ -372,21 +372,18 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
                                     bail!("Error: source index {} out of bounds (data length {})", src, picture.image_data.len());
                                 }
 
-                                // Extract palette index from appropriate nibble
-                                let palette_index = if pixel_index % 2 == 0 {
-                                    // Even pixel: low 4 bits
-                                    picture.image_data[src] & 0x0F
-                                } else {
-                                    // Odd pixel: high 4 bits
-                                    (picture.image_data[src] >> 4) & 0x0F
-                                };
+                                let pal_index0 = ((picture.image_data[src] & 0xF) as usize) * 4;
+                                let pal_index1 = ((picture.image_data[src] >> 4) as usize) * 4;
 
-                                let pal_offset = (palette_index as usize) * 4;
+                                out[dst + 0] = pal_data[pal_index0 + 0];
+                                out[dst + 1] = pal_data[pal_index0 + 1];
+                                out[dst + 2] = pal_data[pal_index0 + 2];
+                                out[dst + 3] = pal_data[pal_index0 + 3];
 
-                                out[dst] = pal_data[pal_offset + 0];
-                                out[dst + 1] = pal_data[pal_offset + 1];
-                                out[dst + 2] = pal_data[pal_offset + 2];
-                                out[dst + 3] = pal_data[pal_offset + 3];
+                                out[dst + 4] = pal_data[pal_index1 + 0];
+                                out[dst + 5] = pal_data[pal_index1 + 1];
+                                out[dst + 6] = pal_data[pal_index1 + 2];
+                                out[dst + 7] = pal_data[pal_index1 + 3];
                             }
                         }
                     }
@@ -405,10 +402,10 @@ fn process_image(filename: &str, args: &Args) -> Result<()> {
                             bail!("Error: source index {} out of bounds (data length {})", src, picture.image_data.len());
                         }
 
-                        let pal_index0 = (picture.image_data[src] & 0xF) as usize;
-                        let pal_index1 = (picture.image_data[src] >> 4) as usize;
+                        let pal_index0 = ((picture.image_data[src] & 0xF) as usize) * 4;
+                        let pal_index1 = ((picture.image_data[src] >> 4) as usize) * 4;
 
-                        out[dst] = pal_data[pal_index0 + 0];
+                        out[dst + 0] = pal_data[pal_index0 + 0];
                         out[dst + 1] = pal_data[pal_index0 + 1];
                         out[dst + 2] = pal_data[pal_index0 + 2];
                         out[dst + 3] = pal_data[pal_index0 + 3];
